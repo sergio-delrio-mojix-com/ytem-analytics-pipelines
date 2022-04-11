@@ -11,6 +11,7 @@ import sys
 # COMMAND ----------
 
 spark.conf.set("sparkspark.sql.legacy.timeParserPolicy","CORRECTED")
+spark.conf.set("spark.databricks.delta.formatCheck.enabled","false")
 
 # COMMAND ----------
 
@@ -27,7 +28,10 @@ spark.conf.set("sparkspark.sql.legacy.timeParserPolicy","CORRECTED")
 # COMMAND ----------
 
 expected_topic = "PERN___cache___setting"
-hostname = "10.128.0.2:9089"
+consumer_group = "PERN-databricks-settings-consumer"
+hostnames = ["10.128.0.25:9092",
+            "10.128.0.24:9092",
+            "10.128.0.23:9092"]
 
 # COMMAND ----------
 
@@ -53,9 +57,11 @@ pool_name
 
 df_expected = spark.readStream \
   .format("kafka") \
-  .option("kafka.bootstrap.servers", hostname) \
+  .option("kafka.bootstrap.servers", ",".join(hostnames)) \
   .option("subscribe", expected_topic) \
   .option("startingOffsets", "earliest") \
+  .option("failOnDataLoss", "false") \
+  .option("group_id",consumer_group) \
   .load()
 #   .filter("value is not null")
 
@@ -161,26 +167,3 @@ query = df_expected_parsed_values.writeStream \
 # COMMAND ----------
 
 display(spark.read.format("delta").load(delta_table_path))
-
-# COMMAND ----------
-
-# MAGIC %sql
-# MAGIC CREATE OR REPLACE TEMPORARY VIEW tmp_view_name_1647966243
-# MAGIC AS
-# MAGIC SELECT COUNT(1) AS itemsQty , lotNumber AS lotNumber , bizLocation AS bizLocation , disposition AS disposition  
-# MAGIC FROM analytics_pern.DM_StockExpirationEPC 
-# MAGIC GROUP BY lotNumber , bizLocation , disposition
-
-# COMMAND ----------
-
-# MAGIC %sql
-# MAGIC select * from tmp_view_name_1647966243 limit 20
-
-# COMMAND ----------
-
-# MAGIC %sql
-# MAGIC CREATE OR REPLACE TEMPORARY VIEW tmp_view_name_1647966900         AS         SELECT  COUNT(1) AS itemsQty , lotNumber AS lotNumber , bizLocation AS bizLocation , disposition AS disposition  FROM analytics_pern.DM_StockExpirationEPC GROUP BY lotNumber , bizLocation , disposition;
-
-# COMMAND ----------
-
-

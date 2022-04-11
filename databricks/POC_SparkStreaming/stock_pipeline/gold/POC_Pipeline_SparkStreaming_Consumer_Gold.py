@@ -11,6 +11,7 @@ import sys
 # COMMAND ----------
 
 spark.conf.set("sparkspark.sql.legacy.timeParserPolicy","CORRECTED")
+spark.conf.set("spark.databricks.delta.formatCheck.enabled","false")
 
 # COMMAND ----------
 
@@ -49,6 +50,7 @@ expected_topics = [
 from datetime import datetime as dt
 now = dt.now().strftime("%Y%m%d")
 pool_name = f"POC_SparkStreaming_Consumer_Gold_pool_{now}"
+consumer_group = "PERN-databricks-DM_StockExpirationEPC-gold-consumer"
 spark.sparkContext.setLocalProperty("spark.scheduler.pool", pool_name)
 pool_name
 
@@ -68,7 +70,7 @@ from datetime import datetime as dt
 # COMMAND ----------
 
 def updateGoldTable(df, df_id):
-  global expected_topics, df_itemstatus, df_setting, df_product
+  global expected_topics, df_itemstatus, df_setting, df_product, gold_table_path
   df_itemstatus = spark.read.format("delta").option("ignoreChanges","true").load(expected_topics[0])
   df_setting = spark.read.format("delta").option("ignoreChanges","true").load(expected_topics[1])
   df_product = spark.read.format("delta").option("ignoreChanges","true").load(expected_topics[2])
@@ -86,8 +88,6 @@ def updateGoldTable(df, df_id):
   )
   df_gold.write.format("delta").mode("overwrite").save(gold_table_path)
   return
-  
-  
   
   
 
@@ -175,37 +175,16 @@ stream_initialization(expected_topics[2])
 # COMMAND ----------
 
 display(spark.read.format("delta").load(gold_table_path)
-       .filter("site_code = '9999999'"))
+       .filter("site_code = '110'"))
 
 # COMMAND ----------
 
-(spark.read.format("delta").load(gold_table_path)
-       .filter("site_code = '9999999'").count())
+# %sql
+# CREATE DATABASE analytics_pern
 
 # COMMAND ----------
 
-# MAGIC %md ## Hexa per Category_l1Label for 9999999
-
-# COMMAND ----------
-
-display(spark.read.format("delta").load(gold_table_path)
-        .filter("site_code = '9999999'")
-        .groupby("category_l1Label")
-        .agg(F.count("hexa"))
-       )
-
-# COMMAND ----------
-
-# display(spark.read.format("delta").load(gold_table_path).groupby("category_l1Label").agg(F.count("hexa")))
-
-# COMMAND ----------
-
-# MAGIC %sql
-# MAGIC CREATE TABLE analytics_pern.DM_StockExpirationEPC
-# MAGIC   USING DELTA
-# MAGIC   LOCATION '/mnt/poc_stock_expiration/gold/PERN___itemstatus'
-
-# COMMAND ----------
-
-# MAGIC %sql
-# MAGIC CREATE DATABASE analytics_pern
+# %sql
+# CREATE TABLE analytics_pern.DM_StockExpirationEPC
+#   USING DELTA
+#   LOCATION '/mnt/poc_stock_expiration/gold/PERN___itemstatus'

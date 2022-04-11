@@ -11,6 +11,7 @@ import sys
 # COMMAND ----------
 
 spark.conf.set("sparkspark.sql.legacy.timeParserPolicy","CORRECTED")
+spark.conf.set("spark.databricks.delta.formatCheck.enabled","false")
 
 # COMMAND ----------
 
@@ -26,8 +27,11 @@ spark.conf.set("sparkspark.sql.legacy.timeParserPolicy","CORRECTED")
 # COMMAND ----------
 
 expected_topic = "PERN___view___itemstatus"
-hostname = "10.128.0.2:9089"
-# setting_key = '/defaultConfigName/DispositionCategories/PERN/NotStock'
+consumer_group = "PERN-databricks-itemstatus-consumer"
+hostnames = ["10.128.0.25:9092",
+            "10.128.0.24:9092",
+            "10.128.0.23:9092"]
+setting_key = '/defaultConfigName/DispositionCategories/PERN/NotStock'
 
 # COMMAND ----------
 
@@ -54,9 +58,11 @@ pool_name
 
 df_expected = spark.readStream \
   .format("kafka") \
-  .option("kafka.bootstrap.servers", hostname) \
+  .option("kafka.bootstrap.servers", ",".join(hostnames)) \
   .option("subscribe", expected_topic) \
-  .option("startingOffsets", "earliest") \
+  .option("startingOffsets", "latest") \
+  .option("failOnDataLoss", "false") \
+  .option("group_id",consumer_group) \
   .load()
 #   .filter("value is not null")
 
@@ -135,10 +141,6 @@ query = df_expected_parsed_values.writeStream \
     .option("checkpointLocation", delta_table_checkpoint) \
     .outputMode("append") \
     .start()
-
-# COMMAND ----------
-
-display(spark.read.format("delta").load(delta_table_path).filter("site_code = '9999999'").orderBy(F.col("eventTime").desc()))
 
 # COMMAND ----------
 
