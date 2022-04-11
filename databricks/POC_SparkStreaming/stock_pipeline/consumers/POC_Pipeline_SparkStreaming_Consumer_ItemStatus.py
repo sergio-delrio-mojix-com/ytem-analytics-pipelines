@@ -27,7 +27,7 @@ spark.conf.set("sparkspark.sql.legacy.timeParserPolicy","CORRECTED")
 
 expected_topic = "PERN___view___itemstatus"
 hostname = "10.128.0.2:9089"
-setting_key = '/defaultConfigName/DispositionCategories/PERN/NotStock'
+# setting_key = '/defaultConfigName/DispositionCategories/PERN/NotStock'
 
 # COMMAND ----------
 
@@ -240,11 +240,3 @@ df_expected_parsed_values.writeStream\
      .option("checkpointLocation", silver_delta_table_checkpoint)\
      .foreachBatch(itemStatus_upsert)\
      .start()
-
-# COMMAND ----------
-
-display(spark.read.format("delta").load(silver_delta_table_path))
-
-# COMMAND ----------
-
-display(spark.read.format("delta").load(silver_delta_table_path).filter("product_gtin = '00000026100012'").orderBy(F.col("eventTime").asc()))
